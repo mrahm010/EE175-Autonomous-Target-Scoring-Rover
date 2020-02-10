@@ -57,9 +57,9 @@ void TargetSystem() {
         targetHIT = 1; 
     }    
     if(targetHIT){ //changes the angle for the next time through the loop
-       angle = angle + angleStep;
+       angle = angle - angleStep;
         if (angle <= minAngle || angle >= maxAngle) { // reveres the direction of the moving at the ends of the angle
-          angleStep = -angleStep;
+         // angleStep = -angleStep;
           targetHIT = 0;
         } 
       myservo.write(angle); // move the servo to desired angle
