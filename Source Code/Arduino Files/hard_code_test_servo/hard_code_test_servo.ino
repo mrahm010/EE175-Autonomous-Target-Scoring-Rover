@@ -7,10 +7,7 @@
 *
 *******************************************************************************************************/
 #include <Servo.h>
-Servo servo;
-#define pinServo 4
-#define trig 3
-#define echo 2
+int myservoPIN  = 5;
 long duration, distance_from_rover;
 
 int ENA = 10; // MCU PWM Pin 10 to ENA on L298n Board
@@ -21,14 +18,31 @@ int ENB = 6;  // MCU PWM Pin 5 to ENB on L298n Board
 int IN3 = 7;  // MCU Digital pin 7 to IN3 on L298n Board
 int IN4 = 8;  // MCU Digital pin 6 to IN4 on L298n Board
 
+// Servo code & vibration
+int angle = 105;    // initial angle  for servo
+int angleStep = 10;
+int vibration_pin = 11;
+const int minAngle = 0;
+const int maxAngle = 106;
+int targetStart = 1;
+int targetHIT = 0;
+int pos = 0;
+int servoInit = 130;
+int detecting = 1;
 
-Servo myServo;
+
+Servo myservo;
 
 void setup() {
   Serial.begin(9600);
-  pinMode(trig, OUTPUT);
-  pinMode(echo, INPUT);
-  myServo.attach(pinServo);
+  myservo.attach(myservoPIN);
+  pinMode(vibration_pin, INPUT);
+  if(targetStart) { // Initializes target to zero
+    for(pos = 180; pos >= 0; pos -= 1) {
+      myservo.write(pos);
+      delay(15);
+    }
+  }
 
   pinMode(ENA, OUTPUT); //Set all the L298n Pin to output
   pinMode(ENB, OUTPUT);
@@ -38,76 +52,40 @@ void setup() {
   pinMode(IN4, OUTPUT);
 }
 
-#define NUM_ANGLES 7
-unsigned char sensorAngle[NUM_ANGLES] = { 60, 70, 80, 90, 100, 110, 120 };  
-unsigned int distance[NUM_ANGLES];
-
-unsigned int readDistance(){
-  digitalWrite(trig, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trig, LOW);
-
-  duration = pulseIn(echo, HIGH);
-  //distance = duration / 58;
-  distance_from_rover = duration / 148; // in inches
-
-
-  delay(100);
-  Serial.print("Distance: ");
-  Serial.println(distance_from_rover);
-  return distance_from_rover;
-}
-
-void angleServo() {
-  static unsigned char angleIndex = 0;
-  for(int i = 0; i < NUM_ANGLES; i++){
-    angleIndex = sensorAngle[i];
-    myServo.write(angleIndex);
-    delay(500);
+void TargetSystem() {
+  detecting = 1;
+  targetStart = 1;
+  while(detecting) { 
+    int val;
+    val = digitalRead(vibration_pin);
+    if(targetStart) {
+      for(pos = 0; pos <= 107; pos += 1) {
+       myservo.write(pos);
+       delay(15);
+      }
+    targetStart = 0;
     }
-}
-
-void readNextDistance(){
-  static unsigned char angleIndex = 0;
-  static signed char next = 1;
-  distance[angleIndex] = readDistance();
-  angleIndex += next;
-  if(angleIndex == NUM_ANGLES - 1) next = -1;
-  else if (angleIndex == 0) next = 1;
-  myServo.write( sensorAngle[angleIndex] );
-
-}
-
-void obstacle(){
-  readNextDistance();
-  unsigned char tooClose = 0;
-  for (unsigned char i = 0 ; i < NUM_ANGLES ; i++) 
-     if ( distance [i] < 30)
-        tooClose = 1;
-
-  if ( tooClose ) {
-  // Something's nearby: back up left
-  Serial.print("Object is too close");
-  avoid();
-  delay(250);
-  tooClose = 0;
+  
+    if(val == 1 ) { // Detects the target hit
+      targetHIT = 1; 
+    }    
+  
+    if(targetHIT) { 
+      angle = angle - angleStep;
+        for(pos = 180; pos >= 0; pos -= 1) {
+        myservo.write(pos);
+        delay(15);
+    }
+         targetHIT = 0;
+      
+     myservo.write(angle); 
+     detecting = 0;  
+     delay(100); 
+    }
   }
-  else {
-  // Nothing in our way: go forward
-  Serial.print("Go!");
-  go();
-  }  
+   
 }
 
-void go()
-{
-  analogWrite(ENA, 200);
-  analogWrite(ENB, 200);
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);  
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
-}
 void avoid()
 {
   backward(750);
@@ -173,16 +151,22 @@ void testMotor()
 {
   forward(3000);
   brake(1000);
-  left(550);
+  left(450);
   brake(1000);
-  forward(3000);
+  TargetSystem();
+  delay(1000);
+  forward(1400);
   brake(750);
-  left(550);
+  left(450);
+  brake(500);
+  TargetSystem();
+  delay(1000);
 }
 
 void loop(){
   testMotor();
   //obstacle();
   //avoid();
+  //TargetSystem();
   
 }
