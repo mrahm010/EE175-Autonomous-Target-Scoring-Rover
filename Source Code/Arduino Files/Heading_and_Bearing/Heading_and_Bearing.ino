@@ -10,12 +10,12 @@
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 adafruit_bno055_offsets_t calib;
 sensors_event_t event;
-//CHUNG
-float lat1 = 33.97575;
-float long1 = -117.325685;
+//Chung
+float lat1 = 33.9756;
+float long1 = -117.3257;
 // HUB
-float lat2 = 33.974633;
-float long2 = -117.328807;
+float lat2 = 33.9754;
+float long2 = -117.3257;
 
 /////////////////////////////////////////
 //Global Variables
