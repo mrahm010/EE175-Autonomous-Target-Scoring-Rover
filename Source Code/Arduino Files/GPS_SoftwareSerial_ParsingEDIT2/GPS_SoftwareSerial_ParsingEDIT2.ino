@@ -27,8 +27,6 @@ Adafruit_GPS GPS(&mySerial);
 // Set to 'true' if you want to debug and listen to the raw GPS sentences
 #define GPSECHO  true
 
-int LED = 13;
-
 void setup()
 {
 
@@ -36,10 +34,11 @@ void setup()
   // also spit it out
   Serial.begin(115200);
   delay(5000);
+  Serial.println("Adafruit GPS library basic test!");
+
   // 9600 NMEA is the default baud rate for Adafruit MTK GPS's- some use 4800
   GPS.begin(9600);
-  pinMode(LED, OUTPUT);
-  
+
   // uncomment this line to turn on RMC (recommended minimum) and GGA (fix data) including altitude
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
   // uncomment this line to turn on only the "minimum recommended" data
@@ -57,16 +56,16 @@ void setup()
 
   delay(1000);
   // Ask for firmware version
-  //mySerial.println(PMTK_Q_RELEASE);
+  mySerial.println(PMTK_Q_RELEASE);
 }
 
 uint32_t timer = millis();
 void loop()                     // run over and over again
 {
-  //char c = GPS.read();
+  char c = GPS.read();          
   // if you want to debug, this is a good time to do it!
-  //if ((c) && (GPSECHO))
-    //Serial.write(c);
+ if ((c) && (GPSECHO))     //GPSECHO too continue updating coordinates
+   // Serial.write(c);    //this line will output all the NMEA
 
   // if a sentence is received, we can check the checksum, parse it...
   if (GPS.newNMEAreceived()) {
@@ -87,18 +86,18 @@ void loop()                     // run over and over again
     timer = millis(); // reset the timer
 
 
+   
+    Serial.print("Fix: "); Serial.print((int)GPS.fix);
+    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
     if (GPS.fix) {
-      Serial.print(GPS.latitudeDegrees);
-      Serial.print("\n");
-      Serial.print(GPS.longitudeDegrees);
+      Serial.print("Location: ");
+      Serial.print(GPS.latitudeDegrees, 4); 
+      Serial.print(", ");
+      Serial.print(GPS.longitudeDegrees, 4);
       Serial.print("\n");
 
+      Serial.print("Angle: "); Serial.println(GPS.angle);
+
     }
-   if(GPS.latitudeDegrees != 0.00 && GPS.longitudeDegrees != 0.00) {
-    digitalWrite(LED,HIGH);
-  }
-  else {
-     digitalWrite(LED,LOW);
-  }
   }
 }
