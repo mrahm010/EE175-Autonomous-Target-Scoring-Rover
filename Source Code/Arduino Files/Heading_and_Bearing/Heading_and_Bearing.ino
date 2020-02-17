@@ -1,6 +1,8 @@
 #include <Wire.h>
+#include <SoftwareSerial.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
+#include <Adafruit_GPS.h>
 #include <utility/imumaths.h>
 #include "Arduino.h"
 #include <limits.h>
@@ -10,12 +12,17 @@
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 adafruit_bno055_offsets_t calib;
 sensors_event_t event;
+
+//GPS Init
+SoftwareSerial myserial(1, 0);
+Adafruit_GPS GPS
+
 //Chung
-float lat1 = 33.9756;
-float long1 = -117.3257;
+float lat1 = 0;
+float long1 = 0;
 // HUB
-float lat2 = 33.9754;
-float long2 = -117.3257;
+float lat2 = 0;
+float long2 = 0;
 
 /////////////////////////////////////////
 //Global Variables
@@ -54,6 +61,7 @@ void setup()
     Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
     while(1);
   }
+  bno.setExtCrystalUse(true);
 
   delay(1000);
   
@@ -64,8 +72,8 @@ float anglecalc(float lat1, float lat2, float long1, float long2 ) {
 
   float dx = cosf(PI / 180*lat1)*(long2 - long1);
   float angle = atan2(dx,dy)/ PI/2 *360;
-  Serial.print(angle);
-  Serial.print("\n");
+  //Serial.print(angle);
+  //Serial.print("\n");
 
   
   //Note: angle will be between -180 and 180 degrees
@@ -219,6 +227,7 @@ void testMotor()
 }
 void loop()
 {
+  
   bno.getEvent(&event);
   //magHead();
   if (key == 1) {
@@ -226,9 +235,9 @@ void loop()
     key = 0;
   }
   float angle = anglecalc(lat1, lat2, long1, long2);
-  Serial.print(angle);
-  Serial.println(" ");
-  //Serial.print(event.orientation.x);
+  //Serial.print(angle);
+  //Serial.println(" ");
+  Serial.println(event.orientation.x);
   //magHead();
   //Serial.println(magnetichead);
   //Serial.print("\n");
@@ -242,5 +251,8 @@ void loop()
   if (event.orientation.x < angle) {
     rightTurn(angle - startOrientation);
   }
+  GoToWaypoint();
+  RaiseTarget();
+  ReturnHome;
   delay(200);
 }
