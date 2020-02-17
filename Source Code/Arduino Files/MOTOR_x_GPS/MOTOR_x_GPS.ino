@@ -1,5 +1,5 @@
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
+//#include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 #include "Arduino.h"
@@ -8,7 +8,7 @@
 #include <Adafruit_GPS.h>
 #include <SoftwareSerial.h>
 #include <Servo.h>
-SoftwareSerial mySerial(1, 0);
+SoftwareSerial mySerial(3, 2);
 Adafruit_GPS GPS(&mySerial);
 
 #define GPSECHO  true
@@ -69,13 +69,6 @@ void setup()
       delay(15);
     }
   }
-  Serial.println("Adafruit GPS library basic test!");
-  GPS.begin(9600);
-  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
-  GPS.sendCommand(PGCMD_ANTENNA);
-  mySerial.println(PMTK_Q_RELEASE);
-
   delay(1000);
   //Serial.begin(9600);
   Serial.println("Orientation Sensor Test"); Serial.println("");
@@ -96,6 +89,37 @@ void setup()
 
   delay(1000);
   
+}
+
+int GetCoordinates() {
+  char c = GPS.read();          
+ if ((c) && (GPSECHO))                       //GPSECHO too continue updating coordinates
+   // Serial.write(c);                      //output of all the NMEA
+
+
+  if (GPS.newNMEAreceived()) {              //if nmea found,parse
+    if (!GPS.parse(GPS.lastNMEA()))         // this also sets the newNMEAreceived() flag to false
+      return;                               // we can fail to parse a sentence in which case we should just wait for another
+  }
+
+  if (timer > millis())  timer = millis();  //reset timer if needed
+  
+  if (millis() - timer > 2000) {
+    timer = millis();                       // reset the timer
+    Serial.print("Fix: "); Serial.print((int)GPS.fix);
+    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
+    if (GPS.fix) {
+      Serial.print("Location: ");
+      Serial.print(GPS.latitudeDegrees, 6); 
+      Serial.print(", ");
+      Serial.print(GPS.longitudeDegrees, 6);
+      Serial.print("\n");
+      lat1 = round(GPS.latitudeDegrees * 10000) /10000;
+      long1 = round(GPS.longitudeDegrees * 10000) / 10000;
+      return 1;
+    }
+  }
+  return 0;
 }
 
 float anglecalc(float lat1, float lat2, float long1, float long2 ) {
@@ -306,28 +330,7 @@ uint32_t timer = millis();
 
 void loop()
 {
-  char c = GPS.read();
-  if ((c) && (GPSECHO))
-  if (GPS.newNMEAreceived()) {
-    if (!GPS.parse(GPS.lastNMEA()))
-    return;
-  }
-    if (timer > millis())  timer = millis();
 
-  // approximately every 2 seconds or so, print out the current stats
-  if (millis() - timer > 2000) {
-    timer = millis(); // reset the timer
-    Serial.print("Fix: "); Serial.print((int)GPS.fix);
-    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-    if (!GPS.fix) {
-      Serial.print("Location: ");
-      Serial.print(GPS.latitudeDegrees, 6); 
-      Serial.print(", ");
-      Serial.print(GPS.longitudeDegrees, 6);
-      Serial.print("\n");
-
-      Serial.print("Angle: "); Serial.println(GPS.angle);
-    }
     
   }
   bno.getEvent(&event);
@@ -336,26 +339,22 @@ void loop()
     startOrientation = event.orientation.x;
     key = 0;
   }
-  float angle = anglecalc(lat1, lat2, long1, long2);
-  //Serial.print(angle);
-  Serial.println(" ");
-  Serial.print(event.orientation.x);
-  //magHead();
-  //Serial.println(magnetichead);
-  //Serial.print("\n");
-  //double b = course_to(lat1, lat2, long1, long2);
-  //testMotor();
-  //rightTurn(angle);
-
-  if (event.orientation.x > angle) {
-    leftTurn(startOrientation - angle);
+  if (GetCoordinates()) {
+    Serial.print("Origin Lat: ");
+    Serial.println(lat1);
+    Serial.print("Origin Long: ");
+    Serial.println(long1);
+    float angle = anglecalc(lat1, lat2, long1, long2);
+    if (event.orientation.x > angle) {
+      leftTurn(startOrientation - angle);
+    }
+    if (event.orientation.x < angle) {
+      rightTurn(angle - startOrientation);
+    }
+    delay(200);
+    GoToCoordinate();
+    //TargetSystem();
+    //ReturnToHome();
   }
-  if (event.orientation.x < angle) {
-    rightTurn(angle - startOrientation);
-  }
-  delay(200);
-  //GoToCoordinate();
-  TargetSystem();
-  ReturnToHome();
   
 }
