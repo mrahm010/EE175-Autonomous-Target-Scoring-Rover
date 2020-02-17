@@ -17,8 +17,8 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 adafruit_bno055_offsets_t calib;
 sensors_event_t event;
 //Chung
-float lat1 = 33.9756;
-float long1 = -117.3257;
+float lat1;
+float long1;
 // HUB
 float lat2 = 33.9754;
 float long2 = -117.3257;
