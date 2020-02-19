@@ -8,7 +8,8 @@
 #include <Adafruit_GPS.h>
 #include <SoftwareSerial.h>
 #include <Servo.h>
-SoftwareSerial mySerial(1, 0);
+
+SoftwareSerial mySerial(3, 2);
 Adafruit_GPS GPS(&mySerial);
 
 #define GPSECHO  true
@@ -17,8 +18,8 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 adafruit_bno055_offsets_t calib;
 sensors_event_t event;
 //Chung
-float lat1;
-float long1;
+float lat1 = 33.9754;
+float long1 = -117.3257;
 // HUB
 float lat2 = 33.9754;
 float long2 = -117.3257;
@@ -104,8 +105,8 @@ void GoToCoordinate(float latitude, float longitude) {
   float angle;
 
   while (coordinateReached == 0) {
-    currentLat = round(GPS.latitudedegrees * 10000) / 10000; //stores in 4 decimal places
-    currentLong = round(GPS.longitudedegrees * 10000) /10000; //stores in 4 decimal places
+    currentLat = round(GPS.latitudeDegrees * 10000) / 10000; //stores in 4 decimal places
+    currentLong = round(GPS.longitudeDegrees * 10000) /10000; //stores in 4 decimal places
     angle = anglecalc(currentLat, latitude, currentLong, longitude);
     if((currentLat == latitude) && (currentLong == longitude)) {
       coordinateReached = 1;
@@ -142,11 +143,11 @@ float anglecalc(float lat1, float lat2, float long1, float long2 ) {
 void magHead() {
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   magnetichead = euler.x();
-  Serial.println(magnetichead);
-  Serial.print("\n");
-  Serial.print("Heading: ");
-  Serial.print(magnetichead);
-  Serial.print("\n");
+//  Serial.println(magnetichead);
+//  Serial.print("\n");
+//  Serial.print("Heading: ");
+//  Serial.print(magnetichead);
+//  Serial.print("\n");
 }
 
 void TargetSystem() {
@@ -204,10 +205,10 @@ double course_to(long lat1, long lon1, long lat2, long lon2) {
   if(bearing<0) {bearing=bearing+360.0 ;}
   
   distance = radius * sqrt(dphi*dphi + dlam*dlam);
-  Serial.println("Bearing");
-  Serial.println(bearing, 8);
-  Serial.println("Distance");
-  Serial.println(distance, 8);
+//  Serial.println("Bearing");
+//  Serial.println(bearing, 8);
+//  Serial.println("Distance");
+//  Serial.println(distance, 8);
   return bearing;
 }
 
@@ -313,7 +314,7 @@ void testMotor()
 {
   forward(3000);
   brake(1000);
-  left(450);
+  rightTurn(450);
   brake(1000);
   TargetSystem();
   delay(1000);
@@ -327,72 +328,60 @@ void testMotor()
 
 uint32_t timer = millis();
 
+
+
 void loop()
 {
   char c = GPS.read();
   if ((c) && (GPSECHO))
   if (GPS.newNMEAreceived()) {
-    if (!GPS.parse(GPS.lastNMEA()))
+  if (!GPS.parse(GPS.lastNMEA()))
     return;
   }
-    if (timer > millis())  timer = millis();
+  if (timer > millis())  timer = millis();
 
   // approximately every 2 seconds or so, print out the current stats
   if (millis() - timer > 2000) {
     timer = millis(); // reset the timer
-    //Serial.print("Fix: "); Serial.print((int)GPS.fix);
-    //Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-//    if (GPS.fix) {
-//      Serial.print("Location: ");
-//      Serial.print(GPS.latitudeDegrees, 6); 
-//      Serial.print(", ");
-//      Serial.print(GPS.longitudeDegrees, 6);
-//      Serial.print("\n");
-//
-//      Serial.print("Angle: "); Serial.println(GPS.angle);
-//    }
-    
+    Serial.print("Fix: "); Serial.print((int)GPS.fix);
+    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
   }
   bno.getEvent(&event);
-  //magHead();
   if (key == 1) {
     startOrientation = event.orientation.x;
     key = 0;
   }
-  float angle = anglecalc(lat1, lat2, long1, long2);
-  //Serial.print(angle);
-  Serial.println(" ");
-  Serial.print(event.orientation.x);
-  //magHead();
-  //Serial.println(magnetichead);
-  //Serial.print("\n");
-  //double b = course_to(lat1, lat2, long1, long2);
-  //testMotor();
-  //rightTurn(angle);
-
-  if (event.orientation.x > angle) {
+//  if (GPS.fix) {
+//    float angle = anglecalc(lat1, lat2, long1, long2);
+//    if (event.orientation.x > angle) {
+//    leftTurn(startOrientation - angle);
+//    }
+//    if (event.orientation.x < angle) {
+//      rightTurn(angle - startOrientation);
+//    }
+//    Serial.print("Fix: "); Serial.print((int)GPS.fix);
+//    lat1 = round(GPS.latitudeDegrees * 10000) / 10000;
+//    long1 = round(GPS.longitudeDegrees * 10000) / 10000;
+//    Serial.print("Lat: ");
+//    Serial.println(lat1);
+//    Serial.print("Long: ");
+    Serial.println(long1);
+    float angle = anglecalc(lat1, lat2, long1, long2);
+    if (event.orientation.x > angle) {
     leftTurn(startOrientation - angle);
-  }
-  if (event.orientation.x < angle) {
-    rightTurn(angle - startOrientation);
-  }
-  delay(200);
-  if (GPS.fix) {
-    lat1 = round(GPS.latitudeDegrees * 10000) / 10000;
-    long1 = round(GPS.longitudeDegrees * 10000) / 10000;
-    Serial.println("Lat: %f", lat1);
-    Serial.println("Long: %f", long1);
-  }
-  GoToCoordinate(lat1, long1);
-  
-  angle = anglecalc(lat2, lat1, long2, long1);
-  if (event.orientation.x > angle) {
-    leftTurn(startOrientation - angle);
-  }
-  if (event.orientation.x < angle) {
-    rightTurn(angle - startOrientation);
-  }
+    }
+    if (event.orientation.x < angle) {
+      rightTurn(angle - startOrientation);
+    }
+    //GoToCoordinate(lat2, long2);
+    //angle = anglecalc(lat2, lat1, long2, long1);
+    //if (event.orientation.x > angle) {
+      //leftTurn(startOrientation - angle);
+   // }
+    //else if (event.orientation.x < angle) {
+     // rightTurn(angle - startOrientation);
+   // }
+}
   //TargetSystem();
   //ReturnToHome();
   
-}

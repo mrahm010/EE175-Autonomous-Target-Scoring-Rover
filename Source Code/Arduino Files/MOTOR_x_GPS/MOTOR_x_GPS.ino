@@ -10,10 +10,11 @@
 #include <Servo.h>
 SoftwareSerial mySerial(3, 2);
 Adafruit_GPS GPS(&mySerial);
+int truei = 0;
 
 #define GPSECHO  true
 #define BNO055_SAMPLERATE_DELAY_MS (100)
-Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
+Adafruit_BNO055 bno = Adafruit_BNO055(55);
 adafruit_bno055_offsets_t calib;
 sensors_event_t event;
 //Chung
@@ -37,7 +38,7 @@ int myservoPIN  = 5;
 // Servo code & vibration
 int angle = 105;    // initial angle  for servo
 int angleStep = 10;
-int vibration_pin = 11;
+int vibration_pin = 9;
 const int minAngle = 0;
 const int maxAngle = 106;
 int targetStart = 1;
@@ -54,12 +55,17 @@ int IN1 = 13;  // MCU Digital Pin 9 to IN1 on L298n Board
 int IN2 = 12;  // MCU Digital Pin 8 to IN2 on L298n Board
 
 int ENB = 6;  // MCU PWM Pin 5 to ENB on L298n Board
-int IN3 = 7;  // MCU Digital pin 7 to IN3 on L298n Board
-int IN4 = 8;  // MCU Digital pin 6 to IN4 on L298n Board
+int IN3 = 11;  // MCU Digital pin 7 to IN3 on L298n Board
+int IN4 = 10;  // MCU Digital pin 6 to IN4 on L298n Board
 
 void setup()
 {
   Serial.begin(115200);
+  delay(2000);
+  Serial.println("GPS Testing");
+  GPS.begin(9600);
+  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ); 
   ///Servo
   myservo.attach(myservoPIN);
   pinMode(vibration_pin, INPUT);
@@ -88,10 +94,40 @@ void setup()
   }
 
   delay(1000);
-  
 }
+uint32_t  timer = millis();
 
-int GetCoordinates() {
+//void GetCoordinates() {
+//  char c = GPS.read();          
+// if ((c) && (GPSECHO))                       //GPSECHO too continue updating coordinates
+//   // Serial.write(c);                      //output of all the NMEA
+//
+//
+//  if (GPS.newNMEAreceived()) {              //if nmea found,parse
+//    if (!GPS.parse(GPS.lastNMEA()))         // this also sets the newNMEAreceived() flag to false
+//      return;                               // we can fail to parse a sentence in which case we should just wait for another
+//  }
+//
+//  if (timer > millis())  timer = millis();  //reset timer if needed
+//  
+//  if (millis() - timer > 2000) {
+//    timer = millis();                       // reset the timer
+//    Serial.print("Fix: "); Serial.print((int)GPS.fix);
+//    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
+//    if (GPS.fix) {
+//      Serial.print("Location: ");
+//      Serial.print(GPS.latitudeDegrees, 6); 
+//      Serial.print(", ");
+//      Serial.print(GPS.longitudeDegrees, 6);
+//      Serial.print("\n");
+//      lat1 = round(GPS.latitudeDegrees * 10000) /10000;
+//      long1 = round(GPS.longitudeDegrees * 10000) / 10000;
+//      truei = 1;
+//    }
+//  }
+//  truei = 0;
+//}
+void GetCoordinates() {
   char c = GPS.read();          
  if ((c) && (GPSECHO))                       //GPSECHO too continue updating coordinates
    // Serial.write(c);                      //output of all the NMEA
@@ -114,14 +150,13 @@ int GetCoordinates() {
       Serial.print(", ");
       Serial.print(GPS.longitudeDegrees, 6);
       Serial.print("\n");
-      lat1 = round(GPS.latitudeDegrees * 10000) /10000;
-      long1 = round(GPS.longitudeDegrees * 10000) / 10000;
-      return 1;
+
+      Serial.print("Angle: "); Serial.println(GPS.angle);
+
     }
   }
-  return 0;
+  
 }
-
 float anglecalc(float lat1, float lat2, float long1, float long2 ) {
   float dy = lat2 - lat1;
 
@@ -326,20 +361,21 @@ void testMotor()
   delay(1000);
 }
 
-uint32_t timer = millis();
+void GoToCoordinate()
+{
+  ///
+}
 
 void loop()
 {
-
-    
-  }
   bno.getEvent(&event);
   //magHead();
   if (key == 1) {
     startOrientation = event.orientation.x;
     key = 0;
   }
-  if (GetCoordinates()) {
+  GetCoordinates();
+  if (truei == 1) {
     Serial.print("Origin Lat: ");
     Serial.println(lat1);
     Serial.print("Origin Long: ");
