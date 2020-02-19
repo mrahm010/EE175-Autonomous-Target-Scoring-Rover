@@ -8,10 +8,6 @@
 #include <Adafruit_GPS.h>
 #include <SoftwareSerial.h>
 #include <Servo.h>
-<<<<<<< HEAD
-
-=======
->>>>>>> 1a57abd75e1089637e672bcee53ba0119e7e37e0
 SoftwareSerial mySerial(3, 2);
 Adafruit_GPS GPS(&mySerial);
 uint32_t timer = millis();
@@ -23,11 +19,7 @@ adafruit_bno055_offsets_t calib;
 sensors_event_t event;
 //Chung
 float lat1 = 33.9754;
-<<<<<<< HEAD
-float long1 = -117.3257;
-=======
 float long1 = -117.3254;
->>>>>>> 1a57abd75e1089637e672bcee53ba0119e7e37e0
 // HUB
 float lat2 = 33.9753;
 float long2 = -117.3254;
@@ -140,11 +132,7 @@ void GoToCoordinate(float latitude, float longitude) {
 
   while (coordinateReached == 0) {
     currentLat = round(GPS.latitudeDegrees * 10000) / 10000; //stores in 4 decimal places
-<<<<<<< HEAD
-    currentLong = round(GPS.longitudeDegrees * 10000) /10000; //stores in 4 decimal places
-=======
     currentLong = round(GPS.longitudeDegrees * 10000) / 10000; //stores in 4 decimal places
->>>>>>> 1a57abd75e1089637e672bcee53ba0119e7e37e0
     angle = anglecalc(currentLat, latitude, currentLong, longitude);
     if((currentLat == latitude) && (currentLong == longitude)) {
       coordinateReached = 1;
@@ -178,19 +166,6 @@ float anglecalc(float lat1, float lat2, float long1, float long2 ) {
   return angle;
 }
 
-<<<<<<< HEAD
-void magHead() {
-  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  magnetichead = euler.x();
-//  Serial.println(magnetichead);
-//  Serial.print("\n");
-//  Serial.print("Heading: ");
-//  Serial.print(magnetichead);
-//  Serial.print("\n");
-}
-
-=======
->>>>>>> 1a57abd75e1089637e672bcee53ba0119e7e37e0
 void TargetSystem() {
   detecting = 1;
   targetStart = 1;
@@ -225,37 +200,6 @@ void TargetSystem() {
    
 }
 
-<<<<<<< HEAD
-double course_to(long lat1, long lon1, long lat2, long lon2) {
-  double dlam,dphi,radius;
-  
-  double deg2rad = 3.141592654/180.0;
-  double rad2deg = 180.0/3.141592654;
-  
-  radius = 6371000.0; //approximate Earth radius in meters.
-  
-  dphi = deg2rad*(lat1+lat2)*0.5e-6; //average latitude in radians
-  //Serial.println(dphi);
-  double cphi=cos(dphi);
-  
-  dphi = deg2rad*(lat2-lat1)*1.0e-6; //differences in degrees
-  dlam = deg2rad*(lon2-lon1)*1.0e-6;
-  
-  dlam *= cphi;  //correct for latitude
-  
-  bearing=rad2deg*atan2(dlam,dphi);
-  if(bearing<0) {bearing=bearing+360.0 ;}
-  
-  distance = radius * sqrt(dphi*dphi + dlam*dlam);
-//  Serial.println("Bearing");
-//  Serial.println(bearing, 8);
-//  Serial.println("Distance");
-//  Serial.println(distance, 8);
-  return bearing;
-}
-
-=======
->>>>>>> 1a57abd75e1089637e672bcee53ba0119e7e37e0
 void ReturnToHome()
 {
   //
@@ -377,7 +321,7 @@ void testMotor()
 {
   forward(3000);
   brake(1000);
-  rightTurn(450);
+  left(450);
   brake(1000);
   //TargetSystem();
   delay(1000);
@@ -396,64 +340,8 @@ int calibrate() {
   return mag;
 }
 
-
-
 void loop()
 {
-<<<<<<< HEAD
-  char c = GPS.read();
-  if ((c) && (GPSECHO))
-  if (GPS.newNMEAreceived()) {
-  if (!GPS.parse(GPS.lastNMEA()))
-    return;
-  }
-  if (timer > millis())  timer = millis();
-
-  // approximately every 2 seconds or so, print out the current stats
-  if (millis() - timer > 2000) {
-    timer = millis(); // reset the timer
-    Serial.print("Fix: "); Serial.print((int)GPS.fix);
-    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-  }
-  bno.getEvent(&event);
-  if (key == 1) {
-    startOrientation = event.orientation.x;
-    key = 0;
-  }
-//  if (GPS.fix) {
-//    float angle = anglecalc(lat1, lat2, long1, long2);
-//    if (event.orientation.x > angle) {
-//    leftTurn(startOrientation - angle);
-//    }
-//    if (event.orientation.x < angle) {
-//      rightTurn(angle - startOrientation);
-//    }
-//    Serial.print("Fix: "); Serial.print((int)GPS.fix);
-//    lat1 = round(GPS.latitudeDegrees * 10000) / 10000;
-//    long1 = round(GPS.longitudeDegrees * 10000) / 10000;
-//    Serial.print("Lat: ");
-//    Serial.println(lat1);
-//    Serial.print("Long: ");
-    Serial.println(long1);
-    float angle = anglecalc(lat1, lat2, long1, long2);
-    if (event.orientation.x > angle) {
-    leftTurn(startOrientation - angle);
-    }
-    if (event.orientation.x < angle) {
-      rightTurn(angle - startOrientation);
-    }
-    //GoToCoordinate(lat2, long2);
-    //angle = anglecalc(lat2, lat1, long2, long1);
-    //if (event.orientation.x > angle) {
-      //leftTurn(startOrientation - angle);
-   // }
-    //else if (event.orientation.x < angle) {
-     // rightTurn(angle - startOrientation);
-   // }
-}
-  //TargetSystem();
-  //ReturnToHome();
-=======
     //testMotor();
 //    imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 //    while(!calibrate()) {
@@ -475,5 +363,5 @@ void loop()
 //      rightTurn(angle);
 //    }
     //GoToCoordinate(lat2, long2); comment back in when turning works
->>>>>>> 1a57abd75e1089637e672bcee53ba0119e7e37e0
   
+}
