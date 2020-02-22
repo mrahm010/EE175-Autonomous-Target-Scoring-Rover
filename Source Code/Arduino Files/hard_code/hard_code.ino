@@ -111,8 +111,11 @@ void go()
 void avoid()
 {
   backward(750);
+  brake(500);
   left(750);
+  brake(500);
   forward(1000);
+  brake(500);
   right(750);
 }
 void forward(int time)
