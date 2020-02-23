@@ -4,6 +4,8 @@ Servo myservo;
 int myservoPIN = 3; // Servo on Pin 3
 int vibration_pin = 7; // Vibration Sensor on Pin 7
 
+unsigned long duration; //new
+
 int angle = 105;
 int angleStep = 10;
 const int minAngle = 0;
@@ -41,7 +43,11 @@ void TargetSystem() {
     }
   
     if(val == 1 ) { // Detects the target hit
-      targetHIT = 1; 
+      duration = pulseIn(vibration_pin, HIGH);
+      if(duration >= 20000) {
+        targetHIT = 1; 
+        Serial.println("HIT BABY");
+      }
     }    
   
     if(targetHIT) { 
