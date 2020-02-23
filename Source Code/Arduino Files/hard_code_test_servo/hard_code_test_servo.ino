@@ -21,7 +21,7 @@ int IN4 = 8;  // MCU Digital pin 6 to IN4 on L298n Board
 ////////////////////////////////Servo code & vibration
 int angle = 105;    // initial angle  for servo
 int angleStep = 10;
-int vibration_pin = 11;
+int vibration_pin = 36;
 const int minAngle = 0;
 const int maxAngle = 106;
 int targetStart = 1;
@@ -243,7 +243,7 @@ void testMotor()
 }
 
 void setup() {
-  Serial.begin(9600);
+  //Serial.begin(9600);
   myservo.attach(myservoPIN);
   pinMode(vibration_pin, INPUT);
   if(targetStart) { // Initializes target to zero
@@ -263,13 +263,11 @@ void setup() {
 
 void loop(){
 ////////////////////////////////GPS Fetch Init
-  while (coordinatesRecieved == 0) {
-    fetchCoordinates(Route);
-  }
+ 
 
-  Serial.print(Route.Coordinate1.latitude);
+  //Serial.print(Route.Coordinate1.latitude);
 ////////////////////////////////
-
+  TargetSystem();
   //testMotor();
   //obstacle();
   //avoid();
