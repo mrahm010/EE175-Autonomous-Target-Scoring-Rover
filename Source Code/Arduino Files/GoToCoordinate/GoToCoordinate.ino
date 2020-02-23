@@ -422,14 +422,8 @@ int calibrate() {
 
 void loop()
 {
-<<<<<<< HEAD
-    Serial.print("hello");
-    testMotor();
-//    imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-=======
     float turningangle = 0.0;
     imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
->>>>>>> 78056482eb6ec04de47eab304319483f065ca77c
 //    while(!calibrate()) {
 //    }
     Serial.println("Calibrated");
