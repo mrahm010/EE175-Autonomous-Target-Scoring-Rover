@@ -1,22 +1,22 @@
-#include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BNO055.h>
-#include <utility/imumaths.h>
 #include "Arduino.h"
 #include <limits.h>
 #include <math.h>
 #include <Adafruit_GPS.h>
 #include <SoftwareSerial.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+#include <utility/imumaths.h>
 #include <Servo.h>
-SoftwareSerial mySerial(3, 2);
-Adafruit_GPS GPS(&mySerial);
-int truei = 0;
 
-#define GPSECHO  true
+SoftwareSerial mySerial(3, 2);                       //change pins if needed
+Adafruit_GPS GPS(&mySerial);
+#define GPSECHO  true     
 #define BNO055_SAMPLERATE_DELAY_MS (100)
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 adafruit_bno055_offsets_t calib;
 sensors_event_t event;
+
 //Chung
 float lat1;
 float long1;
@@ -58,14 +58,26 @@ int ENB = 6;  // MCU PWM Pin 5 to ENB on L298n Board
 int IN3 = 11;  // MCU Digital pin 7 to IN3 on L298n Board
 int IN4 = 10;  // MCU Digital pin 6 to IN4 on L298n Board
 
-void setup()
-{
-  Serial.begin(115200);
+
+void setup(){
+  Serial.begin(115200);                            // connect at 115200 so we can read the GPS fast enough and echo without dropping chars
   delay(2000);
   Serial.println("GPS Testing");
-  GPS.begin(9600);
+  GPS.begin(9600);                                // 9600 NMEA is the default baud rate for Adafruit MTK GPS's- some use 4800
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ); 
+  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);    //set update rate: 1 Hz update rate, going over is not suggested for parsing
+
+  if(!bno.begin(bno.OPERATION_MODE_COMPASS))
+  {
+    /* There was a problem detecting the BNO055 ... check your connections */
+    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    while(1);
+  }
+  
+  delay(1000);
+  
+  //bno.setExtCrystalUse(true);
+
   ///Servo
   myservo.attach(myservoPIN);
   pinMode(vibration_pin, INPUT);
@@ -75,71 +87,26 @@ void setup()
       delay(15);
     }
   }
-  delay(1000);
-  //Serial.begin(9600);
-  Serial.println("Orientation Sensor Test"); Serial.println("");
   
+  //setup
   pinMode(ENA, OUTPUT); //Set all the L298n Pin to output
   pinMode(ENB, OUTPUT);
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
-
-   if(!bno.begin(bno.OPERATION_MODE_COMPASS))
-  {
-    /* There was a problem detecting the BNO055 ... check your connections */
-    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
-    while(1);
-  }
-
-  delay(1000);
+  
 }
-uint32_t  timer = millis();
-
-//void GetCoordinates() {
-//  char c = GPS.read();          
-// if ((c) && (GPSECHO))                       //GPSECHO too continue updating coordinates
-//   // Serial.write(c);                      //output of all the NMEA
-//
-//
-//  if (GPS.newNMEAreceived()) {              //if nmea found,parse
-//    if (!GPS.parse(GPS.lastNMEA()))         // this also sets the newNMEAreceived() flag to false
-//      return;                               // we can fail to parse a sentence in which case we should just wait for another
-//  }
-//
-//  if (timer > millis())  timer = millis();  //reset timer if needed
-//  
-//  if (millis() - timer > 2000) {
-//    timer = millis();                       // reset the timer
-//    Serial.print("Fix: "); Serial.print((int)GPS.fix);
-//    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-//    if (GPS.fix) {
-//      Serial.print("Location: ");
-//      Serial.print(GPS.latitudeDegrees, 6); 
-//      Serial.print(", ");
-//      Serial.print(GPS.longitudeDegrees, 6);
-//      Serial.print("\n");
-//      lat1 = round(GPS.latitudeDegrees * 10000) /10000;
-//      long1 = round(GPS.longitudeDegrees * 10000) / 10000;
-//      truei = 1;
-//    }
-//  }
-//  truei = 0;
-//}
-void GetCoordinates() {
+uint32_t timer = millis();
+int GetCoordinates() {
   char c = GPS.read();          
  if ((c) && (GPSECHO))                       //GPSECHO too continue updating coordinates
    // Serial.write(c);                      //output of all the NMEA
-
-
   if (GPS.newNMEAreceived()) {              //if nmea found,parse
     if (!GPS.parse(GPS.lastNMEA()))         // this also sets the newNMEAreceived() flag to false
-      return;                               // we can fail to parse a sentence in which case we should just wait for another
+      return 0;                               // we can fail to parse a sentence in which case we should just wait for another
   }
-
   if (timer > millis())  timer = millis();  //reset timer if needed
-  
   if (millis() - timer > 2000) {
     timer = millis();                       // reset the timer
     Serial.print("Fix: "); Serial.print((int)GPS.fix);
@@ -150,22 +117,43 @@ void GetCoordinates() {
       Serial.print(", ");
       Serial.print(GPS.longitudeDegrees, 6);
       Serial.print("\n");
-
-      Serial.print("Angle: "); Serial.println(GPS.angle);
-
+      
+      return 1;
     }
   }
-  
+  return 0;
 }
+void GoToCoordinate(float latitude, float longitude) {
+  float currentLat = 0;
+  float currentLong = 0;
+  int coordinateReached = 0;
+  float angle;
+
+  while (coordinateReached == 0) {
+    currentLat = round(GPS.latitudeDegrees * 10000) / 10000; //stores in 4 decimal places
+    currentLong = round(GPS.longitudeDegrees * 10000) /10000; //stores in 4 decimal places
+    angle = anglecalc(currentLat, latitude, currentLong, longitude);
+    if((currentLat == latitude) && (currentLong == longitude)) {
+      coordinateReached = 1;
+    }
+    else {
+      forward(100);
+      if (event.orientation.x > angle) {
+        leftTurn(startOrientation - angle);
+      }
+      else if (event.orientation.x < angle) {
+        rightTurn(angle - startOrientation);
+      }
+    }
+  }
+}
+
 float anglecalc(float lat1, float lat2, float long1, float long2 ) {
   float dy = lat2 - lat1;
-
   float dx = cosf(PI / 180*lat1)*(long2 - long1);
   float angle = atan2(dx,dy)/ PI/2 *360;
   //Serial.print(angle);
   //Serial.print("\n");
-
-  
   //Note: angle will be between -180 and 180 degrees
   //---Added by meh meh
   if(angle < 0) {
@@ -178,11 +166,11 @@ float anglecalc(float lat1, float lat2, float long1, float long2 ) {
 void magHead() {
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   magnetichead = euler.x();
-  Serial.println(magnetichead);
-  Serial.print("\n");
-  Serial.print("Heading: ");
-  Serial.print(magnetichead);
-  Serial.print("\n");
+//  Serial.println(magnetichead);
+//  Serial.print("\n");
+//  Serial.print("Heading: ");
+//  Serial.print(magnetichead);
+//  Serial.print("\n");
 }
 
 void TargetSystem() {
@@ -240,10 +228,10 @@ double course_to(long lat1, long lon1, long lat2, long lon2) {
   if(bearing<0) {bearing=bearing+360.0 ;}
   
   distance = radius * sqrt(dphi*dphi + dlam*dlam);
-  Serial.println("Bearing");
-  Serial.println(bearing, 8);
-  Serial.println("Distance");
-  Serial.println(distance, 8);
+//  Serial.println("Bearing");
+//  Serial.println(bearing, 8);
+//  Serial.println("Distance");
+//  Serial.println(distance, 8);
   return bearing;
 }
 
@@ -260,6 +248,13 @@ void avoid()
   forward(1000);
   brake(500);
   right(750);
+}
+void go()
+{
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);  
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
 }
 void forward(int time)
 {
@@ -349,7 +344,7 @@ void testMotor()
 {
   forward(3000);
   brake(1000);
-  left(450);
+  rightTurn(450);
   brake(1000);
   TargetSystem();
   delay(1000);
@@ -360,37 +355,11 @@ void testMotor()
   TargetSystem();
   delay(1000);
 }
-
-void GoToCoordinate()
-{
-  ///
-}
-
-void loop()
-{
-  bno.getEvent(&event);
-  //magHead();
-  if (key == 1) {
-    startOrientation = event.orientation.x;
-    key = 0;
-  }
-  GetCoordinates();
-  if (truei == 1) {
-    Serial.print("Origin Lat: ");
-    Serial.println(lat1);
-    Serial.print("Origin Long: ");
-    Serial.println(long1);
-    float angle = anglecalc(lat1, lat2, long1, long2);
-    if (event.orientation.x > angle) {
-      leftTurn(startOrientation - angle);
-    }
-    if (event.orientation.x < angle) {
-      rightTurn(angle - startOrientation);
-    }
-    delay(200);
-    GoToCoordinate();
-    //TargetSystem();
-    //ReturnToHome();
+void loop() {
+  if(GetCoordinates()) {
+    sensors_event_t event; 
+    bno.getEvent(&event);
+    Serial.println(event.orientation.x);
   }
   
 }

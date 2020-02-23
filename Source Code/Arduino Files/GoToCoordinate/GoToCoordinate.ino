@@ -8,20 +8,22 @@
 #include <Adafruit_GPS.h>
 #include <SoftwareSerial.h>
 #include <Servo.h>
-SoftwareSerial mySerial(1, 0);
-Adafruit_GPS GPS(&mySerial);
+Adafruit_GPS GPS(&Serial3);
+uint32_t timer = millis();
 
 #define GPSECHO  true
 #define BNO055_SAMPLERATE_DELAY_MS (100)
-Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
+Adafruit_BNO055 bno = Adafruit_BNO055(55);
 adafruit_bno055_offsets_t calib;
 sensors_event_t event;
 //Chung
-float lat1;
-float long1;
+float lat1prec = 0;
+float long1prec = 0;
+float lat1 = 0;
+float long1 = 0;
 // HUB
-float lat2 = 33.9754;
-float long2 = -117.3257;
+float lat2 = 33.9755;
+float long2 = -117.3263;
 
 /////////////////////////////////////////
 //Global Variables
@@ -30,14 +32,16 @@ double bearing;
 double distance;
 double startOrientation = 0;
 int key = 1;
+int counter = 0;
 //////////////
 //servo
 int myservoPIN  = 5;
 ////////
 // Servo code & vibration
+unsigned long duration;
 int angle = 105;    // initial angle  for servo
 int angleStep = 10;
-int vibration_pin = 11;
+int vibration_pin = 39;
 const int minAngle = 0;
 const int maxAngle = 106;
 int targetStart = 1;
@@ -54,12 +58,13 @@ int IN1 = 13;  // MCU Digital Pin 9 to IN1 on L298n Board
 int IN2 = 12;  // MCU Digital Pin 8 to IN2 on L298n Board
 
 int ENB = 6;  // MCU PWM Pin 5 to ENB on L298n Board
-int IN3 = 7;  // MCU Digital pin 7 to IN3 on L298n Board
-int IN4 = 8;  // MCU Digital pin 6 to IN4 on L298n Board
+int IN3 = 11;  // MCU Digital pin 7 to IN3 on L298n Board
+int IN4 = 10;  // MCU Digital pin 6 to IN4 on L298n Board
 
 void setup()
 {
   Serial.begin(115200);
+//  Serial.print("hello");
   ///Servo
   myservo.attach(myservoPIN);
   pinMode(vibration_pin, INPUT);
@@ -74,7 +79,7 @@ void setup()
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
   GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
   GPS.sendCommand(PGCMD_ANTENNA);
-  mySerial.println(PMTK_Q_RELEASE);
+  Serial3.println(PMTK_Q_RELEASE);
 
   delay(1000);
   //Serial.begin(9600);
@@ -86,40 +91,14 @@ void setup()
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
-
-   if(!bno.begin(bno.OPERATION_MODE_COMPASS))
+  if(!bno.begin(bno.OPERATION_MODE_COMPASS))
   {
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
     while(1);
   }
-
   delay(1000);
-  
-}
-void GoToCoordinate(float latitude, float longitude) {
-  float currentLat = 0;
-  float currentLong = 0;
-  int coordinateReached = 0;
-  float angle;
-
-  while (coordinateReached == 0) {
-    currentLat = round(GPS.latitudedegrees * 10000) / 10000; //stores in 4 decimal places
-    currentLong = round(GPS.longitudedegrees * 10000) /10000; //stores in 4 decimal places
-    angle = anglecalc(currentLat, latitude, currentLong, longitude);
-    if((currentLat == latitude) && (currentLong == longitude)) {
-      coordinateReached = 1;
-    }
-    else {
-      forward(100);
-      if (event.orientation.x > angle) {
-        leftTurn(startOrientation - angle);
-      }
-      else if (event.orientation.x < angle) {
-        rightTurn(angle - startOrientation);
-      }
-    }
-  }
+  bno.setExtCrystalUse(true);
 }
 float anglecalc(float lat1, float lat2, float long1, float long2 ) {
   float dy = lat2 - lat1;
@@ -138,20 +117,118 @@ float anglecalc(float lat1, float lat2, float long1, float long2 ) {
   //----meh meh
   return angle;
 }
-
-void magHead() {
+int GetCoordinates() {
+  int confirm;
+  
+  char c = GPS.read();          
+ if ((c) && (GPSECHO))                       //GPSECHO too continue updating coordinates
+   // Serial.write(c);                      //output of all the NMEA
+  if (GPS.newNMEAreceived()) {              //if nmea found,parse
+    if (!GPS.parse(GPS.lastNMEA()))         // this also sets the newNMEAreceived() flag to false
+      return 0;                               // we can fail to parse a sentence in which case we should just wait for another
+  }
+  if (timer > millis())  timer = millis();  //reset timer if needed
+  if (millis() - timer > 2000) {
+    timer = millis();                       // reset the timer
+    Serial.print("Fix: "); Serial.print((int)GPS.fix);
+    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
+    if (GPS.fix && ((int)GPS.fixquality >= 1)) {
+      Serial.print("Location: ");
+      Serial.print(GPS.latitudeDegrees, 6); 
+      Serial.print(", ");
+      Serial.print(GPS.longitudeDegrees, 6);
+      Serial.print("\n");
+//      lat1 = (round(GPS.latitudeDegrees * 10000)) /10000;
+//      long1 = (round(GPS.longitudeDegrees * 10000)) / 10000;
+      counter++;
+//      if (Serial.available() > 0) {
+//        confirm = Serial.read();
+//      }
+      if (counter > 5) {
+        lat1prec = GPS.latitudeDegrees;
+        long1prec = GPS.longitudeDegrees;
+        lat1 = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
+        long1 = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
+        return 1;
+      }
+      else {
+        return 0;
+      }
+    }
+  }
+  return 0;
+}
+void GoToCoordinate(float latitude, float longitude) {
+  float functionAngle = 0;
+  float currentLatprec = 0;
+  float currentLongprec = 0;
+  float currentLat = 0;
+  float currentLong = 0;
+  int coordinateReached = 0;
+  float angle;
+  float ex1;
+  float ex2;
+  float ex3;
+  float ex4;
+  int adjustmentCtr = 0;
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  magnetichead = euler.x();
-  Serial.println(magnetichead);
-  Serial.print("\n");
-  Serial.print("Heading: ");
-  Serial.print(magnetichead);
-  Serial.print("\n");
+  while (coordinateReached == 0) {
+    currentLatprec = GPS.latitudeDegrees;
+    currentLongprec = GPS.longitudeDegrees;
+    currentLat = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
+    currentLong = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
+    Serial.print("Precise Lat: ");
+    Serial.println(currentLatprec);
+    Serial.print("Precise Long: ");
+    Serial.println(currentLongprec);
+    Serial.print("currentLat: ");
+    Serial.println(currentLat, 4);
+    Serial.print("currentLong: ");
+    Serial.println(currentLong, 4);
+    functionAngle = anglecalc(currentLatprec, latitude, currentLongprec, longitude);
+    Serial.print("angle:");
+    Serial.println(functionAngle);
+    if((currentLat == latitude) && (currentLong == longitude)) {
+      coordinateReached = 1;
+      return;
+    }
+    else {
+      forward(2000);
+      delay(2000);
+      adjustmentCtr++;
+      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+      delay(10);
+      if (adjustmentCtr >= 3) {
+        if ((euler.x() > 330) && (functionAngle < 30)) {
+          adjustment1();
+        }
+        else if ((euler.x() < 30) && (functionAngle > 330)) {
+          adjustment2();
+        }
+        else if (euler.x() > functionAngle) {
+          leftTurn(functionAngle);
+        }
+        else if (euler.x()< functionAngle) {
+          rightTurn(functionAngle);
+        }
+        adjustmentCtr = 0;
+      }
+    }
+  }
+  return;
 }
 
 void TargetSystem() {
   detecting = 1;
   targetStart = 1;
+  if(targetStart) {
+      for(pos = 0; pos <= 107; pos += 1) {
+       myservo.write(pos);
+       delay(15);
+      }
+    targetStart = 0;
+  }
+  delay(1000);
   while(detecting) { 
     int val;
     val = digitalRead(vibration_pin);
@@ -162,11 +239,14 @@ void TargetSystem() {
       }
     targetStart = 0;
     }
-  
     if(val == 1 ) { // Detects the target hit
-      targetHIT = 1; 
+      duration = pulseIn(vibration_pin, HIGH);
+      Serial.print("duration: ");
+      Serial.println(duration);
+      if(duration >= 20000) {
+        targetHIT = 1; 
+      }
     }    
-  
     if(targetHIT) { 
       angle = angle - angleStep;
         for(pos = 180; pos >= 0; pos -= 1) {
@@ -180,35 +260,6 @@ void TargetSystem() {
      delay(100); 
     }
   }
-   
-}
-
-double course_to(long lat1, long lon1, long lat2, long lon2) {
-  double dlam,dphi,radius;
-  
-  double deg2rad = 3.141592654/180.0;
-  double rad2deg = 180.0/3.141592654;
-  
-  radius = 6371000.0; //approximate Earth radius in meters.
-  
-  dphi = deg2rad*(lat1+lat2)*0.5e-6; //average latitude in radians
-  //Serial.println(dphi);
-  double cphi=cos(dphi);
-  
-  dphi = deg2rad*(lat2-lat1)*1.0e-6; //differences in degrees
-  dlam = deg2rad*(lon2-lon1)*1.0e-6;
-  
-  dlam *= cphi;  //correct for latitude
-  
-  bearing=rad2deg*atan2(dlam,dphi);
-  if(bearing<0) {bearing=bearing+360.0 ;}
-  
-  distance = radius * sqrt(dphi*dphi + dlam*dlam);
-  Serial.println("Bearing");
-  Serial.println(bearing, 8);
-  Serial.println("Distance");
-  Serial.println(distance, 8);
-  return bearing;
 }
 
 void ReturnToHome()
@@ -224,6 +275,13 @@ void avoid()
   forward(1000);
   brake(500);
   right(750);
+}
+void go()
+{
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);  
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
 }
 void forward(int time)
 {
@@ -247,7 +305,24 @@ void backward(int time)
   delay(time);
 }
 
-void left(int time)
+
+void adjustment1() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);  
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW); 
+  delay(200);
+}
+
+void adjustment2() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);  
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  delay(200); 
+}
+
+void right(int time)
 {
   //analogWrite(ENA, speed);
   //analogWrite(ENB, speed);
@@ -258,7 +333,7 @@ void left(int time)
   delay(time); 
 }
 
-void right(int time)
+void left(int time)
 {
   //analogWrite(ENA, speed);
   //analogWrite(ENB, speed);
@@ -276,36 +351,49 @@ void brake(int time)
   digitalWrite(IN4, LOW);
   delay(time);
 }
-void rightTurn(float angle)
+void rightTurn(float turnangle)
 {
- 
-  if(event.orientation.x < angle){
+  Serial.println("Right turn function");
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  while(euler.x() < turnangle){
+    euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+    Serial.print("eulerx: ");
+    Serial.println(euler.x());
+    Serial.print("angle: ");
+    Serial.println(turnangle);
     right(100);
-    brake(1000);
+    brake(100);
   }
-  else if (event.orientation.x = angle)
+  euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  if (euler.x() >= turnangle)
   {
-    brake(1000);
+    brake(100);
   }
-  else if (event.orientation.x > angle)
-  {
-    left(100);
-    brake(1000);
-  }
+//  else if (event.orientation.x - startOrientation > angle)
+//  {
+//    left(100);
+//    brake(100);
+//  }
 }
-void leftTurn(float angle) {
-  if(event.orientation.x > angle){
+void leftTurn(float turnangle) {
+  Serial.print("Left turn function");
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  float xeuler = euler.x();
+  while(xeuler > turnangle){
+    euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+    Serial.print("eulerx: ");
+    Serial.println(xeuler);
+    Serial.print("angle: ");
+    Serial.println(turnangle);
+    xeuler = euler.x();
     left(100);
-    brake(1000);
+    brake(100);
   }
-  else if (event.orientation.x = angle)
+  euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  xeuler = euler.x();
+  if (xeuler <= turnangle)
   {
-    brake(1000);
-  }
-  else if (event.orientation.x < angle)
-  {
-    right(100);
-    brake(1000);
+    brake(100);
   }
 }
 
@@ -315,84 +403,61 @@ void testMotor()
   brake(1000);
   left(450);
   brake(1000);
-  TargetSystem();
+  //TargetSystem();
   delay(1000);
   forward(1400);
   brake(750);
   left(450);
   brake(500);
-  TargetSystem();
+  //TargetSystem();
   delay(1000);
 }
 
-uint32_t timer = millis();
+int calibrate() {
+  uint8_t system, gyro, accel, mag;
+  system = gyro = accel = mag = 0;
+  bno.getCalibration(&system, &gyro, &accel, &mag);
+  return mag;
+}
 
 void loop()
 {
-  char c = GPS.read();
-  if ((c) && (GPSECHO))
-  if (GPS.newNMEAreceived()) {
-    if (!GPS.parse(GPS.lastNMEA()))
-    return;
-  }
-    if (timer > millis())  timer = millis();
-
-  // approximately every 2 seconds or so, print out the current stats
-  if (millis() - timer > 2000) {
-    timer = millis(); // reset the timer
-    //Serial.print("Fix: "); Serial.print((int)GPS.fix);
-    //Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-//    if (GPS.fix) {
-//      Serial.print("Location: ");
-//      Serial.print(GPS.latitudeDegrees, 6); 
-//      Serial.print(", ");
-//      Serial.print(GPS.longitudeDegrees, 6);
-//      Serial.print("\n");
-//
-//      Serial.print("Angle: "); Serial.println(GPS.angle);
+    float turningangle = 0.0;
+    imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+//    while(!calibrate()) {
 //    }
+    Serial.println("Calibrated");
+    while(!GetCoordinates()) {
+    }
+    Serial.println("Fix!");
+    Serial.println("Quality at least 2");
+    delay(1000);
+    Serial.print("starting...");
+    delay(3000);
+    while (key == 1) {
+      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+      startOrientation = euler.x();
+      if(startOrientation != 0.0) {
+        key = 0;
+      }
+    }
+    Serial.print("lat1: ");
+    Serial.println(lat1, 4);
+    Serial.print("long1: ");
+    Serial.println(long1, 4);
     
-  }
-  bno.getEvent(&event);
-  //magHead();
-  if (key == 1) {
-    startOrientation = event.orientation.x;
-    key = 0;
-  }
-  float angle = anglecalc(lat1, lat2, long1, long2);
-  //Serial.print(angle);
-  Serial.println(" ");
-  Serial.print(event.orientation.x);
-  //magHead();
-  //Serial.println(magnetichead);
-  //Serial.print("\n");
-  //double b = course_to(lat1, lat2, long1, long2);
-  //testMotor();
-  //rightTurn(angle);
-
-  if (event.orientation.x > angle) {
-    leftTurn(startOrientation - angle);
-  }
-  if (event.orientation.x < angle) {
-    rightTurn(angle - startOrientation);
-  }
-  delay(200);
-  if (GPS.fix) {
-    lat1 = round(GPS.latitudeDegrees * 10000) / 10000;
-    long1 = round(GPS.longitudeDegrees * 10000) / 10000;
-    Serial.println("Lat: %f", lat1);
-    Serial.println("Long: %f", long1);
-  }
-  GoToCoordinate(lat1, long1);
-  
-  angle = anglecalc(lat2, lat1, long2, long1);
-  if (event.orientation.x > angle) {
-    leftTurn(startOrientation - angle);
-  }
-  if (event.orientation.x < angle) {
-    rightTurn(angle - startOrientation);
-  }
-  //TargetSystem();
-  //ReturnToHome();
+    turningangle = anglecalc(lat1prec, lat2, long1prec, long2);
+    Serial.print("startOrientation: ");
+    Serial.println(startOrientation);
+    delay(1000);
+    if (startOrientation > turningangle) {
+        leftTurn(turningangle);
+    }
+    else if (startOrientation < turningangle) {
+        rightTurn(turningangle);
+    }
+    GoToCoordinate(lat2, long2); 
+    brake(1000);
+    TargetSystem();
   
 }
