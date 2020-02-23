@@ -22,8 +22,8 @@ float long1prec = 0;
 float lat1 = 0;
 float long1 = 0;
 // HUB
-float lat2 = 33.9842;
-float long2 = -117.3294;
+float lat2 = 33.9755;
+float long2 = -117.3263;
 
 /////////////////////////////////////////
 //Global Variables
@@ -41,7 +41,7 @@ int myservoPIN  = 5;
 unsigned long duration;
 int angle = 105;    // initial angle  for servo
 int angleStep = 10;
-int vibration_pin = 36;
+int vibration_pin = 39;
 const int minAngle = 0;
 const int maxAngle = 106;
 int targetStart = 1;
@@ -170,12 +170,17 @@ void GoToCoordinate(float latitude, float longitude) {
   float ex2;
   float ex3;
   float ex4;
+  int adjustmentCtr = 0;
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   while (coordinateReached == 0) {
     currentLatprec = GPS.latitudeDegrees;
     currentLongprec = GPS.longitudeDegrees;
     currentLat = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
     currentLong = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
+    Serial.print("Precise Lat: ");
+    Serial.println(currentLatprec);
+    Serial.print("Precise Long: ");
+    Serial.println(currentLongprec);
     Serial.print("currentLat: ");
     Serial.println(currentLat, 4);
     Serial.print("currentLong: ");
@@ -185,28 +190,32 @@ void GoToCoordinate(float latitude, float longitude) {
     Serial.println(functionAngle);
     if((currentLat == latitude) && (currentLong == longitude)) {
       coordinateReached = 1;
+      return;
     }
     else {
       forward(2000);
       delay(2000);
+      adjustmentCtr++;
       euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
       delay(10);
-//      if ((functionAngle > 270) && (euler.x() < 90)) {
-//        leftTurn(0.1);
-//        leftTurn(functionangle);
-//      }
-//      else if ((euler.x() > 270) && (functionangle < 90)) {
-//        rightTurn(359.9);
-//        rightTurn(functionangle);
-//      }
-      if (euler.x() > functionAngle + 15) {
-        leftTurn(functionAngle);
-      }
-      else if (euler.x()< functionAngle - 15) {
-        rightTurn(functionAngle);
+      if (adjustmentCtr >= 3) {
+        if ((euler.x() > 330) && (functionAngle < 30)) {
+          adjustment1();
+        }
+        else if ((euler.x() < 30) && (functionAngle > 330)) {
+          adjustment2();
+        }
+        else if (euler.x() > functionAngle) {
+          leftTurn(functionAngle);
+        }
+        else if (euler.x()< functionAngle) {
+          rightTurn(functionAngle);
+        }
+        adjustmentCtr = 0;
       }
     }
   }
+  return;
 }
 
 void TargetSystem() {
@@ -223,13 +232,13 @@ void TargetSystem() {
   while(detecting) { 
     int val;
     val = digitalRead(vibration_pin);
-//    if(targetStart) {
-//      for(pos = 0; pos <= 107; pos += 1) {
-//       myservo.write(pos);
-//       delay(15);
-//      }
-//    targetStart = 0;
-//    }
+    if(targetStart) {
+      for(pos = 0; pos <= 107; pos += 1) {
+       myservo.write(pos);
+       delay(15);
+      }
+    targetStart = 0;
+    }
     if(val == 1 ) { // Detects the target hit
       duration = pulseIn(vibration_pin, HIGH);
       Serial.print("duration: ");
@@ -238,7 +247,6 @@ void TargetSystem() {
         targetHIT = 1; 
       }
     }    
-  
     if(targetHIT) { 
       angle = angle - angleStep;
         for(pos = 180; pos >= 0; pos -= 1) {
@@ -252,7 +260,6 @@ void TargetSystem() {
      delay(100); 
     }
   }
-   
 }
 
 void ReturnToHome()
@@ -296,6 +303,23 @@ void backward(int time)
   digitalWrite(IN3, LOW);
   digitalWrite(IN4, HIGH); 
   delay(time);
+}
+
+
+void adjustment1() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);  
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW); 
+  delay(200);
+}
+
+void adjustment2() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);  
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  delay(200); 
 }
 
 void right(int time)
@@ -398,44 +422,42 @@ int calibrate() {
 
 void loop()
 {
-      forward(1000);
-      brake(1000);
-      TargetSystem();
-      backward(1000);
-      brake(1000);
-      TargetSystem();
-//    float turningangle = 0.0;
-//    imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+    float turningangle = 0.0;
+    imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 //    while(!calibrate()) {
 //    }
-//    Serial.println("Calibrated");
-//    while(!GetCoordinates()) {
-//    }
-//    Serial.println("Fix!");
-//    Serial.println("Quality at least 2");
-//    delay(1000);
-//    Serial.print("starting...");
-//    while (key == 1) {
-//      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-//      startOrientation = euler.x();
-//      if(startOrientation != 0.0) {
-//        key = 0;
-//      }
-//    }
-//    Serial.print("lat1: ");
-//    Serial.println(lat1, 4);
-//    Serial.print("long1: ");
-//    Serial.println(long1, 4);
-//    
-//    turningangle = anglecalc(lat1prec, lat2, long1prec, long2);
-//    Serial.print("startOrientation: ");
-//    Serial.println(startOrientation);
-//    if (startOrientation > turningangle) {
-//        leftTurn(turningangle);
-//    }
-//    else if (startOrientation < turningangle) {
-//        rightTurn(turningangle);
-//    }
-//    GoToCoordinate(lat2, long2); 
+    Serial.println("Calibrated");
+    while(!GetCoordinates()) {
+    }
+    Serial.println("Fix!");
+    Serial.println("Quality at least 2");
+    delay(1000);
+    Serial.print("starting...");
+    delay(3000);
+    while (key == 1) {
+      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+      startOrientation = euler.x();
+      if(startOrientation != 0.0) {
+        key = 0;
+      }
+    }
+    Serial.print("lat1: ");
+    Serial.println(lat1, 4);
+    Serial.print("long1: ");
+    Serial.println(long1, 4);
+    
+    turningangle = anglecalc(lat1prec, lat2, long1prec, long2);
+    Serial.print("startOrientation: ");
+    Serial.println(startOrientation);
+    delay(1000);
+    if (startOrientation > turningangle) {
+        leftTurn(turningangle);
+    }
+    else if (startOrientation < turningangle) {
+        rightTurn(turningangle);
+    }
+    GoToCoordinate(lat2, long2); 
+    brake(1000);
+    TargetSystem();
   
 }
