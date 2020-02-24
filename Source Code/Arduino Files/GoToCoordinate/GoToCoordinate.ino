@@ -22,8 +22,8 @@ float long1prec = 0;
 float lat1 = 0;
 float long1 = 0;
 // HUB
-float lat2 = 33.9755;
-float long2 = -117.3263;
+float lat2 = 33.9757;
+float long2 = -117.3294;
 
 /////////////////////////////////////////
 //Global Variables
@@ -159,6 +159,7 @@ int GetCoordinates() {
   return 0;
 }
 void GoToCoordinate(float latitude, float longitude) {
+  
   float functionAngle = 0;
   float currentLatprec = 0;
   float currentLongprec = 0;
@@ -178,15 +179,15 @@ void GoToCoordinate(float latitude, float longitude) {
     currentLat = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
     currentLong = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
     Serial.print("Precise Lat: ");
-    Serial.println(currentLatprec);
+    Serial.println(currentLatprec, 6);
     Serial.print("Precise Long: ");
-    Serial.println(currentLongprec);
+    Serial.println(currentLongprec, 6);
     Serial.print("currentLat: ");
     Serial.println(currentLat, 4);
     Serial.print("currentLong: ");
     Serial.println(currentLong, 4);
-    functionAngle = anglecalc(currentLatprec, latitude, currentLongprec, longitude);
     Serial.print("angle:");
+    functionAngle = anglecalc(currentLatprec, latitude, currentLongprec, longitude);
     Serial.println(functionAngle);
     if((currentLat == latitude) && (currentLong == longitude)) {
       coordinateReached = 1;
@@ -194,21 +195,19 @@ void GoToCoordinate(float latitude, float longitude) {
     }
     else {
       forward(2000);
-      delay(2000);
       adjustmentCtr++;
-      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-      delay(10);
       if (adjustmentCtr >= 3) {
-        if ((euler.x() > 330) && (functionAngle < 30)) {
-          adjustment1();
-        }
-        else if ((euler.x() < 30) && (functionAngle > 330)) {
-          adjustment2();
-        }
-        else if (euler.x() > functionAngle) {
+        euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+//        if ((euler.x() > 330) && (functionAngle < 30)) {
+//          adjustment1();
+//        }
+//        else if ((euler.x() < 30) && (functionAngle > 330)) {
+//          adjustment2();
+//        }
+        if (euler.x() > functionAngle) {
           leftTurn(functionAngle);
         }
-        else if (euler.x()< functionAngle) {
+        else if (euler.x() < functionAngle) {
           rightTurn(functionAngle);
         }
         adjustmentCtr = 0;
@@ -424,8 +423,8 @@ void loop()
 {
     float turningangle = 0.0;
     imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-//    while(!calibrate()) {
-//    }
+    while(!calibrate()) {
+    }
     Serial.println("Calibrated");
     while(!GetCoordinates()) {
     }
@@ -441,6 +440,7 @@ void loop()
         key = 0;
       }
     }
+    key = 1;
     Serial.print("lat1: ");
     Serial.println(lat1, 4);
     Serial.print("long1: ");
@@ -458,6 +458,21 @@ void loop()
     }
     GoToCoordinate(lat2, long2); 
     brake(1000);
+    turningangle = anglecalc(lat2, lat1, long2, long1);
+    while (key == 1) {
+      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+      startOrientation = euler.x();
+      if(startOrientation != 0.0) {
+        key = 0;
+      }
+    }
+    key = 1;
+    if (startOrientation > turningangle) {
+        leftTurn(turningangle);
+    }
+    else if (startOrientation < turningangle) {
+        rightTurn(turningangle);
+    }
     TargetSystem();
   
 }
