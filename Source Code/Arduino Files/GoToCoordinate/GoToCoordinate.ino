@@ -144,11 +144,12 @@ int GetCoordinates() {
 //      if (Serial.available() > 0) {
 //        confirm = Serial.read();
 //      }
-      if (counter > 5) {
+      if (counter > 1) {
         lat1prec = GPS.latitudeDegrees;
         long1prec = GPS.longitudeDegrees;
         lat1 = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
         long1 = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
+        counter = 0;
         return 1;
       }
       else {
@@ -159,7 +160,6 @@ int GetCoordinates() {
   return 0;
 }
 void GoToCoordinate(float latitude, float longitude) {
-  
   float functionAngle = 0;
   float currentLatprec = 0;
   float currentLongprec = 0;
@@ -174,22 +174,21 @@ void GoToCoordinate(float latitude, float longitude) {
   int adjustmentCtr = 0;
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   while (coordinateReached == 0) {
-    currentLatprec = GPS.latitudeDegrees;
-    currentLongprec = GPS.longitudeDegrees;
-    currentLat = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
-    currentLong = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
+    while(!GetCoordinates()) {
+      
+    }
     Serial.print("Precise Lat: ");
-    Serial.println(currentLatprec, 6);
+    Serial.println(lat1prec, 6);
     Serial.print("Precise Long: ");
-    Serial.println(currentLongprec, 6);
+    Serial.println(long1prec, 6);
     Serial.print("currentLat: ");
-    Serial.println(currentLat, 4);
+    Serial.println(lat1, 4);
     Serial.print("currentLong: ");
-    Serial.println(currentLong, 4);
+    Serial.println(long1, 4);
     Serial.print("angle:");
-    functionAngle = anglecalc(currentLatprec, latitude, currentLongprec, longitude);
+    functionAngle = anglecalc(lat1prec, latitude, long1prec, longitude);
     Serial.println(functionAngle);
-    if((currentLat == latitude) && (currentLong == longitude)) {
+    if((lat1 == latitude) && (long1 == longitude)) {
       coordinateReached = 1;
       return;
     }
@@ -458,21 +457,21 @@ void loop()
     }
     GoToCoordinate(lat2, long2); 
     brake(1000);
-    turningangle = anglecalc(lat2, lat1, long2, long1);
-    while (key == 1) {
-      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-      startOrientation = euler.x();
-      if(startOrientation != 0.0) {
-        key = 0;
-      }
-    }
-    key = 1;
-    if (startOrientation > turningangle) {
-        leftTurn(turningangle);
-    }
-    else if (startOrientation < turningangle) {
-        rightTurn(turningangle);
-    }
+//    turningangle = anglecalc(lat2, lat1, long2, long1);
+//    while (key == 1) {
+//      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+//      startOrientation = euler.x();
+//      if(startOrientation != 0.0) {
+//        key = 0;
+//      }
+//    }
+//    key = 1;
+//    if (startOrientation > turningangle) {
+//        leftTurn(turningangle);
+//    }
+//    else if (startOrientation < turningangle) {
+//        rightTurn(turningangle);
+//    }
     TargetSystem();
   
 }
