@@ -27,13 +27,13 @@ float currlat1 = 0;
 float currlong1 = 0;
 // HUB
 float lat2 = 33.9758;
-float long2 = -117.3294;
+float long2 = -117.3299;
 
 float lat3 = 33.9757;
-float long3 = -117.3294;
+float long3 = -117.3299;
 
 float lat4 = 33.9757;
-float long4 = -117.3296;
+float long4 = -117.3301;
 
 /////////////////////////////////////////
 //Global Variables
@@ -344,8 +344,8 @@ void adjustment2() {
 
 void right(int time)
 {
-//  analogWrite(ENA, 255);
-//  analogWrite(ENB, 255);
+  analogWrite(ENA, 255);
+  analogWrite(ENB, 255);
   digitalWrite(IN1, HIGH);
   digitalWrite(IN2, LOW);  
   digitalWrite(IN3, LOW);
@@ -355,8 +355,8 @@ void right(int time)
 
 void left(int time)
 {
-  //analogWrite(ENA, speed);
-  //analogWrite(ENB, speed);
+  analogWrite(ENA, 255);
+  analogWrite(ENB, 255);
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, HIGH);  
   digitalWrite(IN3, HIGH);
@@ -379,7 +379,10 @@ void rightTurn(float turnangle)
   int axisCtr = 0;
   Serial.println("Right turn function");
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  delay(100);
+  delay(1000);
+  while(!euler.x()){
+    euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  }
   firstAngle = euler.x();
   Serial.print("First Angle: ");
   Serial.print(firstAngle);
@@ -390,7 +393,7 @@ void rightTurn(float turnangle)
     Serial.println(euler.x());
     currAngle = euler.x();
     axisCtr++;
-    if((currAngle < firstAngle) && (axisCtr > 3)){
+    if((currAngle < firstAngle) && (axisCtr > 5)){
       axisPass = 1;
       axisCtr = 0;
     }
@@ -414,8 +417,22 @@ void rightTurn(float turnangle)
 void leftTurn(float turnangle) {
   Serial.print("Left turn function");
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  Serial.println("After imu dec");
   float xeuler = euler.x();
-  while(xeuler > turnangle){
+  int axisPass = 0;
+  int axisCtr = 0;
+  while(!euler.x()){
+    euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+    Serial.print("Euler calibration");
+  }
+  Serial.println("After while loop");
+  float firstAngle;
+  xeuler = euler.x();
+  firstAngle = euler.x();
+  Serial.print("xeuler: ");
+  Serial.println(euler.x());
+  while((xeuler > turnangle) && (!axisPass)){
+    Serial.println("In while loop");
     euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
     delay(10);
     Serial.print("eulerx: ");
@@ -423,14 +440,20 @@ void leftTurn(float turnangle) {
     Serial.print("angle: ");
     Serial.println(turnangle);
     xeuler = euler.x();
+    axisCtr++;
+    if((xeuler > firstAngle) && (axisCtr > 5)){
+      axisPass = 1;
+      axisCtr = 0;
+    }
     left(75);
-    brake(200);
+    brake(100);
   }
   euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   xeuler = euler.x();
   delay(10);
   if (xeuler <= turnangle)
   {
+    Serial.println("Less than");
     brake(100);
   }
 }
@@ -486,9 +509,19 @@ void speedControl() {
   digitalWrite(IN4, LOW);
 }
 
+void performTurn(float start, float angle) {
+  if (start > angle) {
+    leftTurn(angle);
+  }
+  else if (start < angle) {
+    rightTurn(angle);
+  }
+  return;
+}
+
+
 void loop()
 {
-    testMotor();
     float turningangle = 0.0;
     imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
     while(!calibrate()) {
@@ -514,14 +547,16 @@ void loop()
     
     turningangle = anglecalc(currlat1prec, lat2, currlong1prec, long2);
     Serial.print("startOrientation (unplug): ");
-    Serial.println(startOrientation);
-    delay(6000);
-    if (startOrientation > turningangle) {
-        leftTurn(turningangle);
-    }
-    else if (startOrientation < turningangle) {
-        rightTurn(turningangle);
-    }
+    performTurn(startOrientation, turningangle);
+    
+//    if (startOrientation > turningangle) {
+//        leftTurn(turningangle);
+//    }
+//    else if (startOrientation < turningangle) {
+//        rightTurn(turningangle);
+//    }
+
+
     GoToCoordinate(lat2, long2); 
     Serial.println("Coordinate Reached!");
     brake(1000);
@@ -534,17 +569,32 @@ void loop()
       }
     }
     key = 1;
-    if (startOrientation > turningangle) {
-        leftTurn(turningangle);
-    }
-    else if (startOrientation < turningangle) {
-        rightTurn(turningangle);
-    }
+    performTurn(startOrientation, turningangle);
+    
+//    if (startOrientation > turningangle) {
+//        leftTurn(turningangle);
+//    }
+//    else if (startOrientation < turningangle) {
+//        rightTurn(turningangle);
+//    }
+
+
     TargetSystem();
-    GoToCoordinate(originLat, originLong);
+    //GoToCoordinate(originLat, originLong);
 //----------------2 Points---------------------------
+    turningangle = anglecalc(currlat1, lat3, currlong1, long3);
+    while (key == 1) {
+      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+      startOrientation = euler.x();
+      if(startOrientation != 0.0) {
+        key = 0;
+      }
+    }
+    key = 1;
+    performTurn(startOrientation, turningangle);
     GoToCoordinate(lat3, long3);
     brake(1000);
+    
     turningangle = anglecalc(currlat1, originLat, currlong1, originLong);
     while (key == 1) {
       euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
@@ -554,13 +604,25 @@ void loop()
       }
     }
     key = 1;
-    if (startOrientation > turningangle) {
-        leftTurn(turningangle);
-    }
-    else if (startOrientation < turningangle) {
-        rightTurn(turningangle);
-    }
+    performTurn(startOrientation, turningangle);
+//    if (startOrientation > turningangle) {
+//        leftTurn(turningangle);
+//    }
+//    else if (startOrientation < turningangle) {
+//        rightTurn(turningangle);
+//    }
     TargetSystem();
+    turningangle = anglecalc(currlat1, lat4, currlong1, long4);
+    while (key == 1) {
+      euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+      startOrientation = euler.x();
+      if(startOrientation != 0.0) {
+        key = 0;
+      }
+    }
+    key = 1;
+    performTurn(startOrientation, turningangle);
+    //---------------------finish-from-here---------------------------------------
     GoToCoordinate(lat4, long4);
     brake(1000);
     turningangle = anglecalc(currlat1, originLat, currlong1, originLong);
