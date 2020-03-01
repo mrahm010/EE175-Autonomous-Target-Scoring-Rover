@@ -60,6 +60,11 @@ int pos = 0;
 int servoInit = 130;
 int detecting = 1;
 Servo myservo;
+const int trig = 41;
+const int echo = 40;
+
+float distance,duration;
+bool detect = false;
 /* 
 L298N H-Bridge driving DC motor on Arduino
 */
@@ -568,9 +573,36 @@ void performTurn(float start, float angle) {
   return;
 }
 
+void distanceSense () {
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(trig, LOW);
+
+  duration = pulseIn(echo, HIGH);
+  distance = (duration * .0343)/2;
+  Serial.print("Distance: ");
+  Serial.println(distance);
+  delay(1000);
+
+  if(distance < 30) {
+    detect = true;
+    Serial.print("1\n");
+  }
+  else {
+    detect = false;
+    Serial.print("0\n");
+  }
+}
+
 
 void loop()
 {
+  while(!distanceSense()){
+    forward(10);
+    distanceSense();
+  }
     //testMotor();
     //TargetSystem();
     while(!calibrate()) {
