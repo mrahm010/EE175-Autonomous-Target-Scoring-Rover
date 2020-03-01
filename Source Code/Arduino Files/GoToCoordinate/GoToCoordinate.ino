@@ -76,6 +76,9 @@ int ENB = 4;  // MCU PWM Pin 5 to ENB on L298n Board
 int IN3 = 10;  // MCU Digital pin 7 to IN3 on L298n Board
 int IN4 = 9;  // MCU Digital pin 6 to IN4 on L298n Board
 
+int GPSLED = 46; //GPS done calibrating LED to pin 46
+int calibrationLED = 47; //orientation calibration LED to pin 47
+
 void setup()
 {
   Serial.begin(115200);
@@ -99,6 +102,10 @@ void setup()
   delay(1000);
   //Serial.begin(9600);
   Serial.println("Orientation Sensor Test"); Serial.println("");
+  
+  //LED pins
+  pinMode(calibrateLED,OUTPUT);
+  pinMode(GPSLED,OUTPUT);
   
   pinMode(ENA, OUTPUT); //Set all the L298n Pin to output
   pinMode(ENB, OUTPUT);
@@ -148,6 +155,7 @@ int GetCoordinates() {
     Serial.print("Fix: "); Serial.print((int)GPS.fix);
     Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
     if (GPS.fix && ((int)GPS.fixquality >= 1)) {
+      digitalWrite(GPSLED,HIGH);
       Serial.print("Location: ");
       Serial.print(GPS.latitudeDegrees, 6); 
       Serial.print(", ");
@@ -607,6 +615,7 @@ void loop()
     //TargetSystem();
     while(!calibrate()) {
     }
+    digitalWrite(calibrateLED,HIGH);
     Serial.println("Cal");
     delay(6000);
     leftTurnPWM(50);
