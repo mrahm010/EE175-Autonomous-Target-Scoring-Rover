@@ -153,6 +153,8 @@ int GetCoordinates() {
         if (originKey == 1) {
           originLat = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
           originLong = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
+          //originLat = 33.9758;
+          //originLong = -117.3302;
           originKey = 0;
           Serial.print("Origin: ");
           Serial.print(originLat, 4);
@@ -263,7 +265,7 @@ void TargetSystem() {
       duration = pulseIn(vibration_pin, HIGH);
       Serial.print("duration: ");
       Serial.println(duration);
-      if(duration >= 20000) {
+      if(duration >= 22000) {
         targetHIT = 1; 
       }
     }    
@@ -324,7 +326,6 @@ void backward(int time)
   digitalWrite(IN4, HIGH); 
   delay(time);
 }
-
 
 void adjustment1() {
   digitalWrite(IN1, LOW);
@@ -458,6 +459,54 @@ void leftTurn(float turnangle) {
   }
 }
 
+void leftTurnPWM(float turnangle) {
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  float xeuler = euler.x();
+  int axisPass = 0;
+  int axisCtr = 0;
+  while(!euler.x()){
+    euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  }
+  Serial.println("got vector: ");
+  float firstAngle;
+  xeuler = euler.x();
+  firstAngle = euler.x();
+  while((xeuler > turnangle) && (!axisPass)){
+    Serial.println("in while loop");
+    euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+    delay(10);
+    xeuler = euler.x();
+    Serial.print("Euler.x(): ");
+    Serial.println(euler.x());
+    axisCtr++;
+    if((xeuler > firstAngle) && (axisCtr > 5)){
+      axisPass = 1;
+      axisCtr = 0;
+    }
+    leftPWM(75);
+    delay(10);
+    //brake(100);
+  }
+  euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  xeuler = euler.x();
+  delay(10);
+  if (xeuler <= turnangle)
+  {
+    Serial.println("done");
+    brake(100);
+  }
+}
+
+void leftPWM(int time) {
+  analogWrite(ENA, 230);
+  analogWrite(ENB, 230);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);  
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW); 
+  delay(time);
+}
+
 void testMotor()
 {
   forward(3000);
@@ -522,6 +571,13 @@ void performTurn(float start, float angle) {
 
 void loop()
 {
+    //testMotor();
+    //TargetSystem();
+    while(!calibrate()) {
+    }
+    Serial.println("Cal");
+    delay(6000);
+    leftTurnPWM(50);
     float turningangle = 0.0;
     imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
     while(!calibrate()) {
