@@ -39,7 +39,7 @@ float long4 = -117.3301;
 //Global Variables
 float magnetichead;
 double bearing;
-double distance;
+//double distance;
 double startOrientation = 0;
 int key = 1;
 int counter = 0;
@@ -48,7 +48,7 @@ int counter = 0;
 int myservoPIN  = 5;
 ////////
 // Servo code & vibration
-unsigned long duration;
+//unsigned long duration;
 int angle = 105;    // initial angle  for servo
 int angleStep = 10;
 int vibration_pin = 8;
@@ -63,7 +63,7 @@ Servo myservo;
 const int trig = 41;
 const int echo = 40;
 
-float distance,duration;
+float distance, duration;
 bool detect = false;
 /* 
 L298N H-Bridge driving DC motor on Arduino
@@ -77,7 +77,7 @@ int IN3 = 10;  // MCU Digital pin 7 to IN3 on L298n Board
 int IN4 = 9;  // MCU Digital pin 6 to IN4 on L298n Board
 
 int GPSLED = 46; //GPS done calibrating LED to pin 46
-int calibrationLED = 47; //orientation calibration LED to pin 47
+int calibrateLED = 47; //orientation calibration LED to pin 47
 
 void setup()
 {
@@ -581,7 +581,7 @@ void performTurn(float start, float angle) {
   return;
 }
 
-void distanceSense () {
+int distanceSense () {
   digitalWrite(trig, LOW);
   delayMicroseconds(2);
   digitalWrite(trig, HIGH);
@@ -607,10 +607,10 @@ void distanceSense () {
 
 void loop()
 {
-  while(!distanceSense()){
-    forward(10);
-    distanceSense();
-  }
+//  while(!distanceSense()){
+//    forward(10);
+//    distanceSense();
+//  }
     //testMotor();
     //TargetSystem();
     while(!calibrate()) {
