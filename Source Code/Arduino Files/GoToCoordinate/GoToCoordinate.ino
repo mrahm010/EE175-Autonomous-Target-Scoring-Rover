@@ -78,6 +78,7 @@ int IN4 = 9;  // MCU Digital pin 6 to IN4 on L298n Board
 
 int GPSLED = 46; //GPS done calibrating LED to pin 46
 int calibrateLED = 47; //orientation calibration LED to pin 47
+int TargetLED = 45;
 
 void setup()
 {
@@ -106,6 +107,7 @@ void setup()
   //LED pins
   pinMode(calibrateLED,OUTPUT);
   pinMode(GPSLED,OUTPUT);
+  pinMode(TargetLED, OUTPUT);
   
   pinMode(ENA, OUTPUT); //Set all the L298n Pin to output
   pinMode(ENB, OUTPUT);
@@ -164,6 +166,8 @@ int GetCoordinates() {
       counter++;
       if (counter > 1) {
         if (originKey == 1) {
+          //originLat = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
+          //originLong = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
           originLat = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
           originLong = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
           //originLat = 33.9758;
@@ -175,6 +179,8 @@ int GetCoordinates() {
         }
         currlat1prec = GPS.latitudeDegrees;
         currlong1prec = GPS.longitudeDegrees;
+        //currlat1 = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
+        //currlong1 = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
         currlat1 = floor(GPS.latitudeDegrees*10000 + 0.5)/10000;
         currlong1 = floor(GPS.longitudeDegrees*10000 + 0.5)/10000;
         counter = 0;
@@ -237,9 +243,9 @@ void GoToCoordinate(float latitude, float longitude) {
 //        else if ((euler.x() < 30) && (functionAngle > 330)) {
 //          adjustment2();
 //        }
-        if(functionAngle == 0) {
-          leftTurn(10);
-        }
+//        if(functionAngle == 0) {
+//          leftTurn(10);
+//        }
         if (euler.x() > functionAngle) {
           leftTurn(functionAngle);
         }
@@ -263,7 +269,8 @@ void TargetSystem() {
       }
     targetStart = 0;
   }
-  delay(1000);
+  delay(3000);
+  digitalWrite(TargetLED, HIGH);
   while(detecting) { 
     int val;
     val = digitalRead(vibration_pin);
@@ -278,7 +285,8 @@ void TargetSystem() {
       duration = pulseIn(vibration_pin, HIGH);
       Serial.print("duration: ");
       Serial.println(duration);
-      if(duration >= 22000) {
+      if(duration >= 12000) {
+        digitalWrite(TargetLED, LOW);
         targetHIT = 1; 
       }
     }    
@@ -393,7 +401,6 @@ void rightTurn(float turnangle)
   int axisCtr = 0;
   Serial.println("Right turn function");
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  delay(1000);
   while(!euler.x()){
     euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   }
@@ -417,8 +424,9 @@ void rightTurn(float turnangle)
   euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   if (euler.x() >= turnangle)
   {
-    delay(10);
+    //delay(10);
     brake(100);
+    return;
     Serial.print("End Angle: ");
     Serial.println(euler.x());
   }
@@ -469,6 +477,7 @@ void leftTurn(float turnangle) {
   {
     Serial.println("Less than");
     brake(100);
+    return;
   }
 }
 
@@ -607,22 +616,44 @@ int distanceSense () {
 
 void loop()
 {
-//  while(!distanceSense()){
-//    forward(10);
-//    distanceSense();
+imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+//  while(!calibrate()) {
 //  }
-    //testMotor();
-    //TargetSystem();
+//  digitalWrite(calibrateLED,HIGH);
+//  delay(6000);
+//  forward(4000);
+//  brake(100);
+//  delay(1000);
+//  left(950);
+//  brake(100);
+//  TargetSystem();
+//  delay(1000);
+//  right(500);
+//  brake(100);
+//  forward(1000);
+//  brake(100);
+//  delay(1000);
+//  left(500);
+//  brake(100);
+//  TargetSystem();
+//  right(420);
+//  brake(100);
+//  forward(1000);
+//  brake(100);
+//  left(570);
+//  brake(100);
+//  TargetSystem();
+//  forward(4000);
+//  brake(100);
+//  
+//  
+
+  
+  //digitalWrite(TargetLED, HIGH);
+    float turningangle = 0.0;
     while(!calibrate()) {
     }
     digitalWrite(calibrateLED,HIGH);
-    Serial.println("Cal");
-    delay(6000);
-    leftTurnPWM(50);
-    float turningangle = 0.0;
-    imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-    while(!calibrate()) {
-    }
     Serial.println("Calibrated");
     while(!GetCoordinates()) {
     }
@@ -630,6 +661,7 @@ void loop()
     delay(1000);
     Serial.println("starting");
     while (key == 1) {
+      Serial.println("key");
       euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
       startOrientation = euler.x();
       if(startOrientation != 0.0) {
