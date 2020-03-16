@@ -135,11 +135,10 @@ void setup()
   delay(1000);
   bno.setExtCrystalUse(true);
 }
-float anglecalc(float lat1, float lat2, float long1, float long2 ) {
-  float dy = lat2 - lat1;
-
-  float dx = cosf(PI / 180*lat1)*(long2 - long1);
-  float angle = atan2(dx,dy)/ PI/2 *360;
+float angleCalculation(float lat1, float lat2, float long1, float long2 ) {
+  float diffx = cosf(PI / 180*lat1)*(long2 - long1);
+  float diffy = lat2 - lat1;
+  float angle = atan2(diffx,diffy)/ PI/2 *360;
   if(angle < 0) {
     angle = angle + 360;
   }
@@ -209,7 +208,7 @@ void GoToCoordinate(float latitude, float longitude) {
     //c = GPS.read();
     while(!GetCoordinates()) {
     }
-    functionAngle = anglecalc(currlat1prec, latitude, currlong1prec, longitude);
+    functionAngle = angleCalculation(currlat1prec, latitude, currlong1prec, longitude);
 //    if((abs(currlat1prec) <= abs(latitude) + 0.00002) && 
 //       (abs(currlat1prec) >= abs(latitude) - 0.00002) &&
 //       (abs(currlong1prec) <= abs(longitude) + 0.00002) &&
@@ -617,12 +616,12 @@ void loop()
       }
     }
     key = 1;
-    turningangle = anglecalc(currlat1prec, lat2, currlong1prec, long2);
+    turningangle = angleCalculation(currlat1prec, lat2, currlong1prec, long2);
     performTurn(startOrientation, turningangle);
  //----------Going to Coordinate 2---------------------------------------
     GoToCoordinate(lat2, long2); 
     brake(1000);
-    turningangle = anglecalc(currlat1, originLat, currlong1, originLong);
+    turningangle = angleCalculation(currlat1, originLat, currlong1, originLong);
     while (key == 1) {
       euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
       startOrientation = euler.x();
@@ -658,7 +657,7 @@ void loop()
     performTurn(startOrientation, turningangle);
     TargetSystem();
  //-----Going to coordinate 4-----------------------------
-    turningangle = anglecalc(currlat1, lat4, currlong1, long4);
+    turningangle = angleCalculation(currlat1, lat4, currlong1, long4);
     while (key == 1) {
       euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
       startOrientation = euler.x();
@@ -670,7 +669,7 @@ void loop()
     performTurn(startOrientation, turningangle);
     GoToCoordinate(lat4, long4);
     brake(1000);
-    turningangle = anglecalc(currlat1, originLat, currlong1, originLong);
+    turningangle = angleCalculation(currlat1, originLat, currlong1, originLong);
     while (key == 1) {
       euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
       startOrientation = euler.x();
