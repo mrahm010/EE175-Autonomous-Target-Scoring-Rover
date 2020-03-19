@@ -1,6 +1,6 @@
 **Autonomous Target Scoring Rover**
 
-![alt text](https://raw.githubusercontent.com/mrahm010/EE175-Autonomous-Target-Scoring-Rover/Source Code/rover.jpg)
+![alt text](https://raw.githubusercontent.com/mrahm010/EE175-Autonomous-Target-Scoring-Rover/Source-Code/rover.jpg)
 
 <u>Objective:</u> 
 
