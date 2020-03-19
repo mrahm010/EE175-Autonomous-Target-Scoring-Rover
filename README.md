@@ -21,3 +21,5 @@ Key features for the rover this project include GPS navigation using a four-coor
  the way to its destination.
 
 Our design goals for GPS would be a 0-6m accuracy within the actual longitude and latitude. During testing, we achieved 0-10m accuracy with an error of 0.67. Our goal for angle bearing accuracy with the compass was 0-6 degrees with the result being more accurate at 0-3 degrees. For power, we decided to go with an 11.1V 2200mAh LiPo battery.
+
+![](Source%20Code/Poster.jpg)
